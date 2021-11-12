@@ -1,8 +1,8 @@
 <project>
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.github.pbbz</groupId>
-	<artifactId>dota-parser</artifactId>
-	<version>0.0.1</version>
+	<artifactId>dota</artifactId>
+	<version>0.0.2</version>
 
 	<properties>
 		<maven.compiler.source>11</maven.compiler.source>
@@ -25,26 +25,56 @@
   			<artifactId>jackson-databind</artifactId>
   			<version>2.9.6</version>
 		</dependency>
-		
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-core</artifactId>
 			<version>5.3.12</version>
 		</dependency>
-
+		<dependency>
+			<groupId>org.apache.tomcat.embed</groupId>
+			<artifactId>tomcat-embed-core</artifactId>
+			<version>8.5.72</version>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>42.3.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+			<version>5.3.12</version>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.12</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
     	<plugins>
       		<plugin>
         		<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-jar-plugin</artifactId>
+				<artifactId>maven-assembly-plugin</artifactId>
 				<version>3.2.0</version>
-				<configuration>
-          			<archive>
-            			<manifestFile>$p0/META-INF/MANIFEST.MF</manifestFile>
-          			</archive>
-        		</configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals><goal>single</goal></goals>
+						<configuration>
+          					<archive>
+            					<manifest>
+									<mainClass>Dota</mainClass>
+								</manifest>
+          					</archive>
+							<descriptorRefs>
+								<descriptorRef>jar-with-dependencies</descriptorRef>
+							</descriptorRefs>
+        				</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

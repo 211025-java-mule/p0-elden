@@ -1,3 +1,4 @@
+package com.github.pbbz.dota;
 import com.fasterxml.jackson.annotation.*;
 import java.util.*;
 

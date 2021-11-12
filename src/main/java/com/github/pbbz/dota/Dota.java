@@ -1,16 +1,27 @@
+package com.github.pbbz.dota;
+
 import java.util.*;
 import java.net.URL;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.net.HttpURLConnection;
 import java.io.InputStream;
 import java.io.IOException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.catalina.LifecycleException;
 import org.springframework.core.io.ClassPathResource;
 
 public class Dota {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, LifecycleException, SQLException {
+        Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/dota", "dota", "dota");
+        HeroPostgresRepository heroRepository = new HeroPostgresRepository(conn);
         List<Hero> heroList = getHeroInfo();
-        // List<Item> itemList = getItemInfo();
+        heroRepository.create(heroList);
+        ItemPostgresRepository itemRepository = new ItemPostgresRepository(conn);
+        List<Item> itemList = getItemInfo();
+        itemRepository.create(itemList);
 
         List<ProMatches> proList = getProMatches();
         displayProMatches(proList);
@@ -25,21 +36,28 @@ public class Dota {
 
         MatchData matchData = getMatchResults(matchid);
         displayMatchResults(matchData, heroList);
+        
+        Server server = new Server();
+        server.setupServer();
+        server.addProMatches(proList);
+        for (int i = 0; i < 10; i++){
+            server.addMatchData(getMatchResults(proList.get(i).getMatchID()), heroList);
+        }
+        server.startServer();
     }
 
     public static List<Hero> getHeroInfo() throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        return Arrays.asList(mapper.readValue(new ClassPathResource("hero.json").getFile(),Hero[].class));
+        return Arrays.asList(new ObjectMapper()
+            .readValue(new ClassPathResource("hero.json").getFile(),Hero[].class));
     }
 
     public static List<Item> getItemInfo() throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        return Arrays.asList(mapper.readValue(new ClassPathResource("items.json").getFile(),Item[].class));
+        return Arrays.asList(new ObjectMapper()
+            .readValue(new ClassPathResource("items.json").getFile(),Item[].class));
     }
 
     public static List<ProMatches> getProMatches() throws IOException {
         URL url = new URL("https://api.opendota.com/api/proMatches");
-        ObjectMapper mapper = new ObjectMapper();
         List<ProMatches> proList = new ArrayList<ProMatches>();
 
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -47,9 +65,24 @@ public class Dota {
         connection.setRequestProperty("User-Agent","java");
         InputStream response = connection.getInputStream();
         String body = new String(response.readAllBytes());
-        proList = Arrays.asList(mapper.readValue(body, ProMatches[].class));
+        proList = Arrays.asList(new ObjectMapper().readValue(body, ProMatches[].class));
 
         return proList;
+    }
+
+    public static MatchData getMatchResults(String matchid) throws IOException {
+        String apikey = new String("3C6448132939EB4A18C209BE81D92659");
+        URL url = new URL("https://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/V001/?match_id=" 
+            + matchid + "&key=" + apikey);
+         
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestProperty("Accept", "application/json");
+        connection.setRequestProperty("User-Agent","java");
+        InputStream response = connection.getInputStream();
+        String body = new String(response.readAllBytes());
+        MatchData matchData = new ObjectMapper().readValue(body, MatchData.class);
+
+        return matchData;
     }
 
     public static void displayProMatches(List<ProMatches> proList) {
@@ -64,22 +97,6 @@ public class Dota {
             String direName = proList.get(i).getDireName();
             System.out.printf("(" + i + ")   %-8s %-35s %-15s              %-15s %n", time, leagueID, radiantName, direName);
         }
-    }
-
-    public static MatchData getMatchResults(String matchid) throws IOException {
-        String apikey = new String("3C6448132939EB4A18C209BE81D92659");
-        URL url = new URL("https://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/V001/?match_id=" 
-            + matchid + "&key=" + apikey);
-        ObjectMapper mapper = new ObjectMapper();
-         
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestProperty("Accept", "application/json");
-        connection.setRequestProperty("User-Agent","java");
-        InputStream response = connection.getInputStream();
-        String body = new String(response.readAllBytes());
-        MatchData matchData = mapper.readValue(body, MatchData.class);
-
-        return matchData;
     }
 
     public static void displayMatchResults(MatchData matchData, List<Hero> heroList){
@@ -101,7 +118,7 @@ public class Dota {
 
         System.out.println("Match: " + matchData.getResult().getMatchID());
         System.out.printf(time);
-        System.out.printf("%n%-13s vs %13s%n%n", matchData.getResult().getRadiantName(), matchData.getResult().getDireName());
+        System.out.printf("%n%s vs %s%n%n", matchData.getResult().getRadiantName(), matchData.getResult().getDireName());
         if (matchData.getResult().getRadiantWinner()) System.out.printf("Radiant Wins!%n%nRadiant Team%25s%8s%10s%n", "Kills", "Deaths", "Assists");
         else System.out.printf("Dire Wins!%n%nRadiant Team%25s%8s%10s%n", "Kills", "Deaths", "Assists");
         System.out.println("--------------------------------------------------------");

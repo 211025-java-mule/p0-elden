@@ -1,3 +1,4 @@
+package com.github.pbbz.dota;
 public class MatchData {
     private Result result;
 
